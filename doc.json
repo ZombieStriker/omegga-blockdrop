@@ -1,9 +1,26 @@
 {
-  "name": "BlockDrop",
-  "description": "The game BlockDrop",
-  "author": "Zombie_Striker",
-  "config": {
-  },
-  "commands": [
-  ]
+   "name":"BlockDrop",
+   "description":"The game BlockDrop",
+   "author":"Zombie_Striker",
+   "config":{
+      
+   },
+   "commands":[
+      {
+         "name":"!blockdrop",
+         "description":"Lets the player write emotes",
+         "example":"!blockdrop",
+         "args":[
+            
+         ]
+      },
+      {
+         "name":"!setspeed",
+         "description":"Lets the player write emotes",
+         "example":"!setspeed",
+         "args":[
+            
+         ]
+      }
+   ]
 }
