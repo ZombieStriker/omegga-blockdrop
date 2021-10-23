@@ -17,6 +17,7 @@ if [[ "$_java" ]]; then
         echo version is more than 1.7
     else         
         echo version is less than 1.7
+        exit 1
     fi
 fi
 
