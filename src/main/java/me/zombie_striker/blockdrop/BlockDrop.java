@@ -4,7 +4,7 @@ import com.kmschr.brs.*;
 import me.zombie_striker.omeggajava.JOmegga;
 import me.zombie_striker.omeggajava.RPCResponse;
 import me.zombie_striker.omeggajava.events.*;
-import me.zombie_striker.omeggajava.objects.PromisedObject;
+import me.zombie_striker.omeggajava.objects.Player;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,6 +23,12 @@ public class BlockDrop implements Listener {
 
     private User underplateUser = new User(UUID.fromString("aaaaaaaa-aaab-aaaa-aaaa-aaaaaaaaaaba"), "BP_UnderPlate");
 
+    private int[] newColorRound = new int[]{0,0,0,0,5,5,5,5,5,5,5,5,5,5};
+    private int newColorRoundIndex = 3;
+    private int newColorCounter = 5;
+
+    private int decreaseSpeedTimeBy = 1;
+
     private int speed = 20 * 4;
     private int tickCounter = speed;
     private ColorEnum safeTile = null;
@@ -30,6 +36,9 @@ public class BlockDrop implements Listener {
 
     private int ticks = 0;
     private int difficulty = 1;
+
+    private List<Player> inGamePlayers = new LinkedList<>();
+
 
     public static void main(String... args) {
         JOmegga.init();
@@ -53,6 +62,7 @@ public class BlockDrop implements Listener {
             try {
                 Files.copy(originalfile.toPath(), saveFile.toPath());
                 Files.copy(new File(JOmegga.getJOmeggaJar().getParentFile(), "invisiblespawn.brs").toPath(), saveSpawnFile.toPath());
+                Files.copy(new File(JOmegga.getJOmeggaJar().getParentFile(), "holdingtank.brs").toPath(), saveSpawnFile.toPath());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -69,98 +79,137 @@ public class BlockDrop implements Listener {
 
     @EventHandler
     public void tick(TickEvent event) {
-        if (tickCounter == 0) {
-            if (!loadComplete) {
-                if (plate == null) {
-                    File savefolder = new File(JOmegga.getOmeggaDir(), "data/Saved/Builds");
-                    File saveFile = new File(savefolder, "blockdrop_panel.brs");
-                    if(!saveFile.exists()){
-                        JOmegga.log("Save file does not exist");
-                        return;
-                    }
-                    if (response == null) {
-                        response = JOmegga.readSaveData("blockdrop_panel");
-                        JOmegga.log("Creating response");
-                        return;
-                    } else if (response.getReturnValue() == null) {
-                        JOmegga.log("Loading the data is still null");
-                        return;
-                    }
-                    plate = (SaveData) response.getReturnValue();
+        try {
+            if(tickCounter%10==0) {
+                for (Player player : JOmegga.getPlayers()) {
+                    player.updatePositon();
                 }
-                JOmegga.log("Clearing bricks, as this may be initializing");
-                JOmegga.clearallbricks(true);
-                File savefolder = new File(JOmegga.getOmeggaDir(), "/data/Saved/Builds");
-                for (ColorEnum ce : ColorEnum.values()) {
-                    if (!new File(savefolder, ce.getSavename() + ".brs").exists()) {
-                        for (Brick brick : plate.getBricks()) {
-                            brick.setColor(new ColorMode(ce.getColorID()));
-                            plate.setAuthor(ce.getUser());
-                            plate.getBrickOwners().clear();
-                            plate.getBrickOwners().add(ce.getUser());
-                            brick.setOwnerIndex(1);
-                        }
-                        JOmegga.loadSaveData(plate.toRPCData(), 0, 0, 0, true);
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        JOmegga.save(ce.getSavename());
-                        JOmegga.logAndBroadcast("Saving bricks for " + ce.getName());
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        JOmegga.clearallbricks(true);
-                        return;
-                    }
-                }
-                loadComplete = true;
-                JOmegga.loadBricks("invisiblespawn", 80 * 8, 80 * 8, 1000 + 12);
             }
-            if (safeTile == null) {
-                ColorEnum random = null;
-                boolean found = false;
-                random = ColorEnum.values()[ThreadLocalRandom.current().nextInt(difficulty)];
-                if (dropPlates.size() > 1) {
-                    while (!found) {
-                        for (Plate plat : dropPlates) {
-                            if (plat.getColor() == random) {
-                                found = true;
-                                break;
+            if (tickCounter == 0) {
+                if (!loadComplete) {
+                    if (plate == null) {
+                        File savefolder = new File(JOmegga.getOmeggaDir(), "data/Saved/Builds");
+                        File saveFile = new File(savefolder, "blockdrop_panel.brs");
+                        if (!saveFile.exists()) {
+                            JOmegga.log("Save file does not exist");
+                            return;
+                        }
+                        if (response == null) {
+                            response = JOmegga.readSaveData("blockdrop_panel");
+                            return;
+                        } else if (response.getReturnValue() == null) {
+                            return;
+                        }
+                        plate = (SaveData) response.getReturnValue();
+                    }
+                    JOmegga.log("Clearing bricks, as this may be initializing");
+                    JOmegga.clearallbricks(true);
+                    File savefolder = new File(JOmegga.getOmeggaDir(), "/data/Saved/Builds");
+                    for (ColorEnum ce : ColorEnum.values()) {
+                        if (!new File(savefolder, ce.getSavename() + ".brs").exists()) {
+                            for (Brick brick : plate.getBricks()) {
+                                brick.setColor(new ColorMode(ce.getColorID()));
+                                plate.setAuthor(ce.getUser());
+                                plate.getBrickOwners().clear();
+                                plate.getBrickOwners().add(ce.getUser());
+                                brick.setOwnerIndex(1);
                             }
+                            JOmegga.loadSaveData(plate.toRPCData(), 0, 0, 0, true);
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            JOmegga.save(ce.getSavename());
+                            JOmegga.logAndBroadcast("Saving bricks for " + ce.getName());
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            JOmegga.clearallbricks(true);
+                            return;
                         }
-                        if (!found) {
-                            random = ColorEnum.values()[ThreadLocalRandom.current().nextInt(difficulty)];
-                        }
+                    }
+                    loadComplete = true;
+                    JOmegga.loadBricks("invisiblespawn", 80 * 8, -80 * 8, 1000 + 12);
+                    JOmegga.loadBricks("holdingtank", 80 * 8, -80 * 8, 1000);
+                    return;
+                }
+
+                for (Player player : new LinkedList<>(inGamePlayers)) {
+                    if (player.getPosition().getY() < 0 || player.getPosition().getZ() < 500) {
+                        inGamePlayers.remove(player);
+                        player.teleport(80 * 8, -80 * 8, 1050);
                     }
                 }
 
-                safeTile = random;
-                JOmegga.broadcast("Tiles that are not <color=\"" + safeTile.getHex() + "\"><b>" + safeTile.getName() + "</></b> will disappear.");
-                tickCounter = speed;
-                speed = (int) (((Math.sin(((double) ticks) / 100) + 1) * 25) + 50);
-            } else {
-                if (clearing) {
-                    clearing = false;
-                    loadUnderPlate();
-                    clearAllPlates(underplateUser);
-                    loadPlates();
+                if (safeTile == null) {
+                    ColorEnum random = null;
+                    boolean found = false;
+                    random = ColorEnum.values()[ThreadLocalRandom.current().nextInt(ColorEnum.values().length)];
+                    if (dropPlates.size() > 1) {
+                        while (!found) {
+                            for (Plate plat : dropPlates) {
+                                if (plat.getColor() == random) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+                            if (!found) {
+                                random = ColorEnum.values()[ThreadLocalRandom.current().nextInt(difficulty)];
+                            }
+                        }
+                    }
+
+                    safeTile = random;
+                    JOmegga.broadcast("Tiles that are not <color=\"" + safeTile.getHex() + "\"><b>" + safeTile.getName() + "</></b> will disappear.");
                     tickCounter = speed;
-                    safeTile = null;
-                    difficulty = (int) Math.max(2, (((Math.sin(((double) ticks) / 10) + 1.0) * ColorEnum.values().length / 2.0) + 1));
-                    JOmegga.log(difficulty + " current Difficulty");
-                    ticks++;
                 } else {
-                    clearing = true;
-                    clearAllPlates(safeTile);
-                    tickCounter = 5 * 20;
+                    if (clearing) {
+                        clearing = false;
+                        loadUnderPlate();
+                        clearAllPlates(underplateUser);
+                        loadPlates();
+                        tickCounter = speed;
+                        safeTile = null;
+                        if(newColorCounter<=0){
+                            newColorCounter = newColorRound[Math.min(ColorEnum.values().length,newColorRoundIndex)];
+                            newColorRoundIndex++;
+                            difficulty=(Math.min(difficulty+1,ColorEnum.values().length));
+                        }else{
+                            newColorCounter--;
+                        }
+                        speed=Math.max(50,speed-decreaseSpeedTimeBy);
+                        JOmegga.log(difficulty + " current Difficulty. Speed = "+speed);
+                        ticks++;
+                        if ((inGamePlayers.size() < 2 && JOmegga.getPlayers().size() > 1) || ((inGamePlayers.size() < 1 && JOmegga.getPlayers().size() > 0))) {
+                            JOmegga.logAndBroadcast("<color=\"fab\">Game over! The winner is <b>" + (inGamePlayers.size() == 0 ? "null" : inGamePlayers.get(0).getName()) + "</b></>");
+                            inGamePlayers.clear();
+                            for (Player player : JOmegga.getPlayers()) {
+                                player.teleport(80 * 8, 80 * 8, 1050);
+                                inGamePlayers.add(player);
+                            }
+                            difficulty = 4;
+                            ticks = 0;
+                            speed=5*20;
+                        }else{
+                            JOmegga.logAndBroadcast("<color=\"afa\">Round : <b>"+ticks+"</b></>");
+                        }
+                    } else {
+                        clearing = true;
+                        clearAllPlates(safeTile);
+                        tickCounter = 5 * 20;
+                    }
                 }
             }
+            tickCounter--;
+        }catch(Exception e34){
+            JOmegga.log("Method Error for tick"+e34.getMessage());
+            for(StackTraceElement s : e34.getStackTrace()){
+                JOmegga.log("> "+s.getClassName()+" "+s.getMethodName()+" "+s.getLineNumber());
+            }
         }
-        tickCounter--;
     }
 
     public void loadUnderPlate() {
@@ -197,13 +246,13 @@ public class BlockDrop implements Listener {
         for (int x = 0; x < 16; x++) {
             for (int y = 0; y < 16; y++) {
                 ColorEnum random = ColorEnum.values()[ThreadLocalRandom.current().nextInt(difficulty)];
-                for (Brick brick : plate.getBricks()) {
+                /*for (Brick brick : plate.getBricks()) {
                     brick.setColor(new ColorMode(random.getColorID()));
                     plate.setAuthor(random.getUser());
                     plate.getBrickOwners().clear();
                     plate.getBrickOwners().add(random.getUser());
                     brick.setOwnerIndex(1);
-                }
+                }*/
                 Plate floor = new Plate(random, plate);
                 dropPlates.add(floor);
                 JOmegga.loadBricks(random.getSavename(), x * 80, y * 80, 1000, true);

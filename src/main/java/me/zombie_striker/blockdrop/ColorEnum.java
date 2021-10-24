@@ -19,6 +19,7 @@ public enum ColorEnum {
     BLACK(11, new User(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaabe"), "BD_BLACK"),"555","BLACK","BP_Black"),
     MAROON(12, new User(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaabf"), "BD_MAROON"), "b00","MAROON","BP_Maroon"),
     LIME(18, new User(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaca"), "BD_LIME"),"0f0","LIME","BP_Lime"),
+    BROWN(36, new User(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaacb"), "BD_Brown"),"a86","BROWN","BP_Brown"),
     ;
 
     private int colorid;
