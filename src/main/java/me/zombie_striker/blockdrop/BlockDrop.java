@@ -5,6 +5,7 @@ import me.zombie_striker.omeggajava.JOmegga;
 import me.zombie_striker.omeggajava.RPCResponse;
 import me.zombie_striker.omeggajava.events.*;
 import me.zombie_striker.omeggajava.objects.Player;
+import me.zombie_striker.omeggajava.objects.Vector3D;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,7 +24,7 @@ public class BlockDrop implements Listener {
 
     private User underplateUser = new User(UUID.fromString("aaaaaaaa-aaab-aaaa-aaaa-aaaaaaaaaaba"), "BP_UnderPlate");
 
-    private int[] newColorRound = new int[]{0,0,0,0,5,5,5,5,5,5,5,5,5,5};
+    private int[] newColorRound = new int[]{0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
     private int newColorRoundIndex = 3;
     private int newColorCounter = 5;
 
@@ -43,14 +44,16 @@ public class BlockDrop implements Listener {
     public static void main(String... args) {
         JOmegga.init();
         new BlockDrop().init();
-        while(JOmegga.isRunning()){}
+        while (JOmegga.isRunning()) {
+        }
     }
 
     public void init() {
         JOmegga.registerListener(this);
     }
+
     @EventHandler
-    public void onBootstrap(BootstrapEvent event){
+    public void onBootstrap(BootstrapEvent event) {
         File savefolder = new File(JOmegga.getOmeggaDir(), "data/Saved/Builds");
         File saveFile = new File(savefolder, "blockdrop_panel.brs");
         File saveSpawnFile = new File(savefolder, "invisiblespawn.brs");
@@ -77,14 +80,43 @@ public class BlockDrop implements Listener {
 
     private boolean loadComplete = false;
 
+    private RPCResponse playerLocRPC;
+
     @EventHandler
     public void tick(TickEvent event) {
         try {
-            if(tickCounter%10==0) {
-                for (Player player : JOmegga.getPlayers()) {
-                    player.updatePositon();
+            if (tickCounter % 10 == 0) {
+                //for (Player player : JOmegga.getPlayers()) {
+                //player.updatePositon();
+                //}
+                JOmegga.getAllPlayerPositions();
+                for (Player player : new LinkedList<>(inGamePlayers)) {
+                    if (!player.isAlive()) {
+                        inGamePlayers.remove(player);
+                        JOmegga.log("Removing dead player" + player.getName());
+                    } else if (player.getPosition().getY() < 0) {
+                        inGamePlayers.remove(player);
+                        player.setPosition(new Vector3D(80 * 8, -80 * 8, 1050));
+                        JOmegga.log("Removing " + player.getName());
+                    } else if (player.getPosition().getZ() < 500) {
+                        inGamePlayers.remove(player);
+                        player.teleport(80 * 8, -80 * 8, 1050);
+                        JOmegga.log("Removing " + player.getName());
+                    }
                 }
             }
+            if (safeTile != null && !clearing) {
+                if (tickCounter == 90) {
+                    JOmegga.broadcast("3...");
+                }
+                if (tickCounter == 60) {
+                    JOmegga.broadcast("2...");
+                }
+                if (tickCounter == 30) {
+                    JOmegga.broadcast("1...");
+                }
+            }
+
             if (tickCounter == 0) {
                 if (!loadComplete) {
                     if (plate == null) {
@@ -137,12 +169,6 @@ public class BlockDrop implements Listener {
                     return;
                 }
 
-                for (Player player : new LinkedList<>(inGamePlayers)) {
-                    if (player.getPosition().getY() < 0 || player.getPosition().getZ() < 500) {
-                        inGamePlayers.remove(player);
-                        player.teleport(80 * 8, -80 * 8, 1050);
-                    }
-                }
 
                 if (safeTile == null) {
                     ColorEnum random = null;
@@ -167,35 +193,40 @@ public class BlockDrop implements Listener {
                     tickCounter = speed;
                 } else {
                     if (clearing) {
-                        clearing = false;
                         loadUnderPlate();
-                        clearAllPlates(underplateUser);
-                        loadPlates();
-                        tickCounter = speed;
-                        safeTile = null;
-                        if(newColorCounter<=0){
-                            newColorCounter = newColorRound[Math.min(ColorEnum.values().length,newColorRoundIndex)];
-                            newColorRoundIndex++;
-                            difficulty=(Math.min(difficulty+1,ColorEnum.values().length));
-                        }else{
-                            newColorCounter--;
-                        }
-                        speed=Math.max(50,speed-decreaseSpeedTimeBy);
-                        JOmegga.log(difficulty + " current Difficulty. Speed = "+speed);
-                        ticks++;
-                        if ((inGamePlayers.size() < 2 && JOmegga.getPlayers().size() > 1) || ((inGamePlayers.size() < 1 && JOmegga.getPlayers().size() > 0))) {
-                            JOmegga.logAndBroadcast("<color=\"fab\">Game over! The winner is <b>" + (inGamePlayers.size() == 0 ? "null" : inGamePlayers.get(0).getName()) + "</b></>");
+                        clearing = false;
+                        if ((inGamePlayers.size() <= 1 && JOmegga.getPlayers().size() > 1) || ((inGamePlayers.size() < 1 && JOmegga.getPlayers().size() > 0))) {
+                            if (inGamePlayers.size() > 0)
+                                JOmegga.logAndBroadcast("<color=\"fab\">Game over! The winner is <b>" + (inGamePlayers.size() == 0 ? "null" : inGamePlayers.get(0).getName()) + "</b></>");
                             inGamePlayers.clear();
+                            int stacked = 0;
                             for (Player player : JOmegga.getPlayers()) {
-                                player.teleport(80 * 8, 80 * 8, 1050);
+                                player.teleport(80 * 8, 80 * 8, 1050 + (stacked * 50));
                                 inGamePlayers.add(player);
+                                stacked++;
                             }
                             difficulty = 4;
                             ticks = 0;
-                            speed=5*20;
-                        }else{
-                            JOmegga.logAndBroadcast("<color=\"afa\">Round : <b>"+ticks+"</b></>");
+                            speed = 5 * 20;
+                        } else {
+                            JOmegga.logAndBroadcast("<color=\"afa\">Round : <b>" + ticks + "</b></>");
+                            JOmegga.log(inGamePlayers.size() + " || " + JOmegga.getPlayers().size());
                         }
+                        clearAllPlates(underplateUser);
+                        Thread.sleep(50);
+                        loadPlates();
+                        tickCounter = speed;
+                        safeTile = null;
+                        if (newColorCounter <= 0) {
+                            newColorCounter = newColorRound[Math.min(ColorEnum.values().length, newColorRoundIndex)];
+                            newColorRoundIndex++;
+                            difficulty = (Math.min(difficulty + 1, ColorEnum.values().length));
+                        } else {
+                            newColorCounter--;
+                        }
+                        speed = Math.max(50, speed - decreaseSpeedTimeBy);
+                        JOmegga.log(difficulty + " current Difficulty. Speed = " + speed);
+                        ticks++;
                     } else {
                         clearing = true;
                         clearAllPlates(safeTile);
@@ -204,10 +235,10 @@ public class BlockDrop implements Listener {
                 }
             }
             tickCounter--;
-        }catch(Exception e34){
-            JOmegga.log("Method Error for tick"+e34.getMessage());
-            for(StackTraceElement s : e34.getStackTrace()){
-                JOmegga.log("> "+s.getClassName()+" "+s.getMethodName()+" "+s.getLineNumber());
+        } catch (Exception e34) {
+            JOmegga.log("Method Error for tick" + e34.getMessage());
+            for (StackTraceElement s : e34.getStackTrace()) {
+                JOmegga.log("> " + s.getClassName() + " " + s.getMethodName() + " " + s.getLineNumber());
             }
         }
     }
@@ -230,7 +261,7 @@ public class BlockDrop implements Listener {
                 }
                 Plate floor = new Plate(null, plate);
                 dropPlates.add(floor);
-                JOmegga.loadSaveData(plate.toRPCData(), x * 80, y * 80, 990, true);
+                JOmegga.loadSaveData(plate.toRPCData(), x * 80, y * 80, 1000 - 4, true);
                 //JOmegga.loadBricks("blockdrop_panel", x * 80, y * 80, 990, true);
             }
         }
@@ -246,13 +277,6 @@ public class BlockDrop implements Listener {
         for (int x = 0; x < 16; x++) {
             for (int y = 0; y < 16; y++) {
                 ColorEnum random = ColorEnum.values()[ThreadLocalRandom.current().nextInt(difficulty)];
-                /*for (Brick brick : plate.getBricks()) {
-                    brick.setColor(new ColorMode(random.getColorID()));
-                    plate.setAuthor(random.getUser());
-                    plate.getBrickOwners().clear();
-                    plate.getBrickOwners().add(random.getUser());
-                    brick.setOwnerIndex(1);
-                }*/
                 Plate floor = new Plate(random, plate);
                 dropPlates.add(floor);
                 JOmegga.loadBricks(random.getSavename(), x * 80, y * 80, 1000, true);
